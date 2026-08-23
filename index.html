@@ -1,15 +1,25 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A Pocket of Time</title><meta name="description" content="A quiet corner of the internet for stories, memories, art, and things worth keeping."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&family=Libre+Baskerville:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css"></head><body>
-<header class="topbar"><a class="brand" href="index.html">a pocket of time</a><nav><a href="index.html">home</a><a href="#archive">archive</a><a href="#about">about</a></nav><span class="date-stamp">SUN · 23 AUG 2026</span></header>
-<main class="room">
-<section class="welcome"><span class="eyebrow">HELLO, STRANGER.</span><h1>you've wandered into<br><em>a pocket of time.</em></h1><p>A little corner of the internet for stories, memories, odd thoughts, and things I don't want to lose.</p><a class="hand-link" href="#archive">come in →</a></section>
-<div class="scribble s1">leave things here<br>before they disappear.</div>
-<button class="artifact photograph tilt-a" data-title="A photograph" data-body="I don't remember why I took this. I remember where I was."><div class="photo-art"><span>YOUR<br>PHOTOGRAPH<br>GOES HERE</span></div><b>a photograph from somewhere.</b></button>
-<button class="artifact calendar tilt-b" data-title="The calendar" data-body="Some days have entries. Some days have memories. Some days were just Tuesdays."><strong>AUGUST 2026</strong><div class="calendar-grid">1  2  3  4  5  6  7<br>8  9 10 11 12 <u>13</u> 14<br>15 16 17 18 19 20 21<br>22 <u>23</u> 24 25 26 27 28</div><i>some days are worth keeping.</i></button>
-<a class="artifact folder tilt-c" href="#archive"><span>FILE_01 /</span><strong>WRITINGS</strong><div>things i've left here<br><small>memories · letters · thoughts</small></div></a>
-<button class="artifact notebook tilt-d" data-title="Things I haven't figured out yet" data-body="I think I wanted to write about this. Remember this feeling. Future me, don't forget..."><span>NOTES_004</span><strong>things I haven't<br>figured out yet</strong><small>open me</small></button>
-<button class="artifact envelope tilt-e" data-title="For future me" data-body="You will forget some of this. That's okay. Keep the things that deserve remembering. Let the rest become part of the background."><span>FOR LATER</span><strong>future me</strong><small>open →</small></button>
-<button class="artifact shelf tilt-f" data-title="Things I make" data-body="Writing · Art · Projects · other things I made because I could."><strong>things i make</strong><div class="books"><i>writing</i><i>art</i><i>projects</i><i>other</i></div></button>
-<section id="archive" class="archive"><div><span class="eyebrow">ARCHIVE LOG</span><h2>things i've left here</h2></div><a class="entry" href="post.html"><span>15 AUG 2026</span><strong>My first pocket of time</strong><small>memory · 3 min read</small></a><a class="entry" href="humor.html"><span>31 JUL 2026</span><strong>Remembering I have a bad sense of humor</strong><small>memory · 3 min read</small></a><div class="entry faded"><span>2016</span><strong>old blog, old internet, old me</strong><small>coming back slowly...</small></div></section>
-<section id="about" class="about"><span class="eyebrow">ABOUT THIS PLACE</span><h2>Not quite a blog.<br>Not quite a portfolio.</h2><p>Maybe a time capsule. Maybe a room. Maybe just a place to leave pieces of myself where strangers can accidentally find them.</p><p class="hand">If you wandered in by accident, you're welcome to stay awhile.</p></section>
-</main><footer><span>made with coffee, overthinking & a stubborn fondness for the old internet.</span><span>you were here.</span></footer>
-<div class="modal-backdrop" id="modal"><article class="modal"><button class="close">×</button><span class="eyebrow">FOUND IN THE POCKET</span><h2 id="modal-title"></h2><p id="modal-body"></p></article></div><script src="script.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A Pocket of Time</title>
+  <style>
+    :root { background:#f3e3d5; color:#24211e; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; background:#f3e3d5; }
+    body { display:flex; justify-content:center; }
+    main { width:min(100%, 1100px); padding:clamp(14px,3vw,36px); }
+    .art { display:block; width:100%; height:auto; }
+  </style>
+</head>
+<body>
+  <main>
+    <img
+      class="art"
+      src="assets/pocket-drawing.jpg"
+      alt="A Pocket of Time, original hand-drawn homepage artwork"
+    >
+  </main>
+</body>
+</html>
