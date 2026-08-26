@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Pocket of Time</title>
+<style>
+  :root{
+    --paper:#f4ecdf;
+    --paper2:#eee3d2;
+    --ink:#29251f;
+    --muted:#756e63;
+    --lav:#c8bdd6;
+    --line:#d8ccb9;
+    --shadow:rgba(55,45,34,.15);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    color:var(--ink);
+    background:#f7f1e7;
+    font-family: Georgia, "Times New Roman", serif;
+    line-height:1.75;
+  }
+
+  button{font:inherit;color:inherit}
+
+  .site{
+    min-height:100vh;
+    background:
+      linear-gradient(rgba(75,67,56,.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(75,67,56,.07) 1px, transparent 1px),
+      var(--paper);
+    background-size:42px 42px;
+  }
+
+  .hero{
+    min-height:520px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    align-items:center;
+    gap:40px;
+    padding:70px clamp(28px,7vw,100px);
+    border-bottom:1px solid var(--line);
+  }
+
+  .hero-art{
+    min-height:360px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+  }
+
+  .person{
+    width:250px;
+    height:290px;
+    position:relative;
+    transform:rotate(-3deg);
+  }
+
+  .shadow{
+    position:absolute;
+    width:155px;height:270px;
+    left:25px;top:10px;
+    background:#b9bdbe;
+    opacity:.45;
+    border-radius:48% 55% 40% 50%;
+    transform:rotate(8deg);
+  }
+
+  .head{
+    position:absolute;
+    width:105px;height:125px;
+    left:83px;top:65px;
+    border:2px solid #6f6b68;
+    border-radius:48% 48% 44% 44%;
+    background:#f0e8dc;
+  }
+  .hair{
+    position:absolute;
+    width:112px;height:75px;
+    left:78px;top:48px;
+    border-radius:55% 55% 25% 20%;
+    background:repeating-linear-gradient(125deg,#b6afb0 0 3px,#d4c9c2 3px 7px);
+    opacity:.75;
+    transform:rotate(-5deg);
+  }
+  .body{
+    position:absolute;
+    width:175px;height:150px;
+    left:38px;top:150px;
+    background:#c8bdd6;
+    border:2px solid #81758b;
+    border-radius:48% 48% 42% 42%;
+  }
+  .knee{
+    position:absolute;
+    width:120px;height:90px;
+    left:110px;top:190px;
+    border:2px solid #81758b;
+    border-radius:55%;
+    background:#e9dfd3;
+    transform:rotate(12deg);
+  }
+
+  .hero-copy{padding:20px}
+  .eyebrow{
+    font-size:.8rem;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:16px;
+  }
+  h1{
+    margin:0;
+    font-family:"Comic Sans MS","Bradley Hand",cursive;
+    font-size:clamp(3.2rem,7vw,6.2rem);
+    font-weight:500;
+    line-height:.95;
+    letter-spacing:.02em;
+  }
+  .hero-copy p{
+    max-width:420px;
+    margin:25px 0 0;
+    color:var(--muted);
+    font-size:1.05rem;
+  }
+
+  .featured{
+    max-width:1120px;
+    margin:0 auto;
+    padding:75px 28px 55px;
+  }
+
+  .feature-grid{
+    display:grid;
+    grid-template-columns:220px 1fr;
+    gap:42px;
+    align-items:start;
+  }
+
+  .note-label{
+    background:#eee4d4;
+    border:1px solid var(--line);
+    padding:24px;
+    min-height:230px;
+    box-shadow:7px 8px 0 rgba(100,80,55,.07);
+    transform:rotate(-1.2deg);
+    position:relative;
+  }
+  .note-label:before{
+    content:"";
+    position:absolute;
+    left:15px;top:-12px;
+    width:40px;height:17px;
+    border:2px solid #77706a;
+    border-bottom:0;
+    border-radius:20px 20px 0 0;
+    transform:rotate(-18deg);
+  }
+  .date{
+    font-family:"Courier New",monospace;
+    font-size:.78rem;
+    letter-spacing:.08em;
+  }
+  .tag{
+    margin-top:22px;
+    font-family:"Courier New",monospace;
+    font-size:.78rem;
+    color:var(--muted);
+  }
+
+  .feature-copy{
+    background:rgba(250,245,236,.62);
+    padding:35px 40px 38px;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .feature-copy h2{
+    margin:0 0 8px;
+    font-family:"Comic Sans MS","Bradley Hand",cursive;
+    font-size:clamp(2rem,4vw,3.2rem);
+    font-weight:500;
+    line-height:1.1;
+  }
+  .subtitle{
+    font-style:italic;
+    color:var(--muted);
+    margin:0 0 24px;
+  }
+  .feature-copy p{margin:0 0 15px}
+  .read{
+    margin-top:22px;
+    padding:0;
+    border:0;
+    border-bottom:1px solid var(--ink);
+    background:none;
+    cursor:pointer;
+    font-family:"Courier New",monospace;
+    font-size:.82rem;
+    letter-spacing:.04em;
+  }
+
+  .notebook-area{
+    border-top:1px solid var(--line);
+    padding:55px 28px 90px;
+    background:rgba(232,220,202,.55);
+  }
+  .notebook-inner{max-width:1120px;margin:auto}
+  .section-title{
+    font-family:"Comic Sans MS","Bradley Hand",cursive;
+    font-size:2rem;
+    font-weight:500;
+    margin:0 0 8px;
+  }
+  .section-note{
+    margin:0 0 30px;
+    color:var(--muted);
+    font-size:.95rem;
+  }
+
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(5,minmax(130px,1fr));
+    gap:16px;
+  }
+  .card{
+    min-height:205px;
+    border:1px solid #cdbda8;
+    background:#f2e9da;
+    padding:20px 16px;
+    text-align:left;
+    cursor:pointer;
+    box-shadow:4px 5px 0 rgba(92,72,49,.08);
+    transition:transform .18s ease, box-shadow .18s ease;
+    position:relative;
+  }
+  .card:nth-child(2){transform:rotate(1deg)}
+  .card:nth-child(3){transform:rotate(-1.2deg)}
+  .card:nth-child(4){transform:rotate(.8deg)}
+  .card:nth-child(5){transform:rotate(-1deg)}
+  .card:hover,.card:focus-visible{
+    transform:translateY(-5px) rotate(0);
+    box-shadow:6px 9px 0 rgba(92,72,49,.11);
+    outline:2px solid #8c7c9b;
+    outline-offset:2px;
+  }
+  .card .number{
+    font-family:"Courier New",monospace;
+    font-size:.72rem;
+    color:var(--muted);
+  }
+  .card h3{
+    font-family:"Comic Sans MS","Bradley Hand",cursive;
+    font-size:1.35rem;
+    font-weight:500;
+    line-height:1.2;
+    margin:24px 0 15px;
+  }
+  .scribble{
+    position:absolute;
+    right:14px;bottom:13px;
+    color:#91819e;
+    font-size:1.6rem;
+  }
+
+  footer{
+    text-align:center;
+    padding:40px 20px;
+    font-family:"Courier New",monospace;
+    font-size:.78rem;
+    color:var(--muted);
+  }
+
+  .reader-backdrop{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:10;
+    background:rgba(34,30,27,.72);
+    padding:24px;
+    align-items:center;
+    justify-content:center;
+  }
+  .reader-backdrop.open{display:flex}
+  .reader{
+    width:min(980px,100%);
+    max-height:92vh;
+    overflow:auto;
+    background:#eadfcd;
+    box-shadow:0 20px 70px rgba(0,0,0,.35);
+    position:relative;
+    border:1px solid #c8b89f;
+  }
+  .reader-close{
+    position:absolute;
+    right:14px;top:10px;
+    width:44px;height:44px;
+    border:1px solid #b7a68f;
+    border-radius:50%;
+    background:#f2e8d8;
+    cursor:pointer;
+    font-size:1.3rem;
+    z-index:2;
+  }
+  .spread{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    min-height:620px;
+  }
+  .page{
+    padding:65px 55px 50px;
+    background:#f5eddf;
+    background-image:linear-gradient(rgba(90,80,68,.05) 1px,transparent 1px);
+    background-size:100% 28px;
+  }
+  .page + .page{
+    border-left:1px solid #cdbda6;
+  }
+  .page small{
+    font-family:"Courier New",monospace;
+    color:var(--muted);
+  }
+  .page h2{
+    font-family:"Comic Sans MS","Bradley Hand",cursive;
+    font-size:2.5rem;
+    font-weight:500;
+    line-height:1.05;
+    margin:45px 0 20px;
+  }
+  .page p{margin:0 0 17px}
+  .reader-nav{
+    display:flex;
+    justify-content:space-between;
+    gap:14px;
+    padding:14px;
+    background:#dfd0ba;
+  }
+  .reader-nav button{
+    border:1px solid #b9a58b;
+    background:#eee2cf;
+    padding:10px 18px;
+    cursor:pointer;
+    min-height:44px;
+  }
+  .reader-nav button:disabled{opacity:.35;cursor:not-allowed}
+
+  @media(max-width:760px){
+    .hero{
+      min-height:0;
+      grid-template-columns:1fr;
+      padding:45px 24px;
+      gap:5px;
+    }
+    .hero-art{min-height:280px}
+    .person{transform:scale(.85) rotate(-3deg)}
+    .hero-copy{text-align:center;padding:10px}
+    .hero-copy p{margin-left:auto;margin-right:auto}
+    .feature-grid{grid-template-columns:1fr;gap:28px}
+    .note-label{max-width:230px}
+    .feature-copy{padding:28px 22px}
+    .cards{grid-template-columns:repeat(2,1fr)}
+    .card{min-height:180px}
+    .spread{grid-template-columns:1fr}
+    .page{padding:48px 28px 40px}
+    .page + .page{display:none}
+    .page h2{font-size:2rem;margin-top:30px}
+    .reader-backdrop{padding:10px}
+  }
+
+  @media(max-width:430px){
+    .cards{grid-template-columns:1fr 1fr;gap:10px}
+    .card{min-height:165px;padding:15px 12px}
+    .card h3{font-size:1.15rem}
+    .notebook-area{padding-left:18px;padding-right:18px}
+  }
+</style>
+</head>
+<body>
+<div class="site">
+
+<header class="hero">
+  <div class="hero-art" aria-label="Illustration of a curled-up person">
+    <div class="person" aria-hidden="true">
+      <div class="shadow"></div>
+      <div class="hair"></div>
+      <div class="head"></div>
+      <div class="body"></div>
+      <div class="knee"></div>
+    </div>
+  </div>
+  <div class="hero-copy">
+    <div class="eyebrow">stories · memories · things worth keeping</div>
+    <h1>A pocket<br>of time</h1>
+    <p>A small corner of the internet for things that might otherwise disappear.</p>
+  </div>
+</header>
+
+<main>
+<section class="featured">
+  <div class="feature-grid">
+    <aside class="note-label">
+      <div class="date">31 JUL 2026</div>
+      <div class="tag">about me (?)</div>
+    </aside>
+
+    <article class="feature-copy">
+      <h2>Remembering I Have a Bad Sense of Humor</h2>
+      <p class="subtitle">*Channels my 14 year old self with her delusions of grandeur and main character syndrome*</p>
+      <p>So hey guys, as you might know, I had a blog. It had all of ... 4? Subscribers. One of which was probably my dad.</p>
+      <p>I had the pleasure of revisiting my blog and reading some of the... <em>*shudders*</em> posts. I cringed the way you do at your unfinished self. But then I looked past the words I'd written. I'd forgotten how... earnest I was?</p>
+      <p>I was so direct. I had the audacity to think, I have thoughts. The internet exists. These two facts clearly belong together.</p>
+      <button class="read" type="button" data-open="0">read the whole thing →</button>
+    </article>
+  </div>
+</section>
+
+<section class="notebook-area">
+  <div class="notebook-inner">
+    <h2 class="section-title">other pieces in this pocket</h2>
+    <p class="section-note">Tap a page. The notebook opens.</p>
+
+    <div class="cards">
+      <button class="card" type="button" data-open="0">
+        <span class="number">01</span>
+        <h3>Remembering I Have a Bad Sense of Humor</h3>
+        <span class="scribble">☆</span>
+      </button>
+      <button class="card" type="button" data-open="1">
+        <span class="number">02</span>
+        <h3>The Journey</h3>
+        <span class="scribble">✿</span>
+      </button>
+      <button class="card" type="button" data-open="2">
+        <span class="number">03</span>
+        <h3>I Wasn't Prepared for Parenthood</h3>
+        <span class="scribble">♡</span>
+      </button>
+      <button class="card" type="button" data-open="3">
+        <span class="number">04</span>
+        <h3>Things Worth Keeping</h3>
+        <span class="scribble">✎</span>
+      </button>
+      <button class="card" type="button" data-open="4">
+        <span class="number">05</span>
+        <h3>Fragments</h3>
+        <span class="scribble">~</span>
+      </button>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>you were here · A Pocket of Time</footer>
+</div>
+
+<div class="reader-backdrop" id="readerBackdrop" role="dialog" aria-modal="true" aria-label="Notebook reader">
+  <div class="reader">
+    <button class="reader-close" id="closeReader" type="button" aria-label="Close notebook">×</button>
+    <div class="spread">
+      <section class="page">
+        <small id="readerDate">31 JUL 2026</small>
+        <h2 id="readerTitle">Remembering I Have a Bad Sense of Humor</h2>
+        <p id="readerLeft"></p>
+      </section>
+      <section class="page">
+        <small>from the pocket</small>
+        <div id="readerRight"></div>
+      </section>
+    </div>
+    <div class="reader-nav">
+      <button id="prevPiece" type="button">← previous</button>
+      <button id="nextPiece" type="button">next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const pieces = [
+  {
+    date:"31 JUL 2026",
+    title:"Remembering I Have a Bad Sense of Humor",
+    left:[
+      "*Channels my 14 year old self with her delusions of grandeur and main character syndrome*",
+      "So hey guys, as you might know, I had a blog. It had all of ... 4? Subscribers. One of which was probably my dad.",
+      "I had the pleasure of revisiting my blog and reading some of the... *shudders* posts.",
+      "I cringed the way you do at your unfinished self. But then I looked past the words I'd written. I'd forgotten how... earnest I was?",
+      "I was so direct. I had the audacity to think, I have thoughts. The internet exists. These two facts clearly belong together."
+    ],
+    right:[
+      "The thoughts themselves? I had no business nor credentials holding such dramatic opinions so confidently.",
+      "“Life after death”",
+      "“Temple run is life”",
+      "...",
+      "Bruh? Iamthirteenandthisisdeep, much?",
+      "Then... randomly?",
+      "What happens if you lick your dog??",
+      "... are you okay, child?",
+      "I’d written a letter to Malala after reading her book. I’d dreamt I was chatting with her over mutton biryani. And I had decided to post the letter over on my blog in case she stumbled upon my blog while browsing “the internet”.",
+      "As if random noble laureates go around like: Malala → randomly browsing WordPress one Tuesday."
+    ]
+  },
+  {
+    date:"08 AUG 2026",
+    title:"The Journey",
+    left:[
+      "I have a fairly clear memory of childhood.",
+      "Although I say fairly, I have no real example to compare it with.",
+      "Memory is a strange little room. Some things stay because they mattered. Others stay for reasons nobody bothered to explain."
+    ],
+    right:[
+      "There are pieces of childhood that only become visible years later.",
+      "A room. A smell. A particular afternoon.",
+      "You don't know you're collecting them while you're living them."
+    ]
+  },
+  {
+    date:"18 AUG 2026",
+    title:"I Wasn't Prepared for Parenthood",
+    left:[
+      "I have not been a good parent.",
+      "I want to be honest about that before we go any further.",
+      "My first charge was child abandonment."
+    ],
+    right:[
+      "My child was Gotya. A bald baby.",
+      "This is where the story becomes considerably less responsible.",
+      "Some things are easier to confess when you put them on paper."
+    ]
+  },
+  {
+    date:"21 AUG 2026",
+    title:"Things Worth Keeping",
+    left:[
+      "A spoon.",
+      "A clothes stand.",
+      "A folding bed.",
+      "Envelopes."
+    ],
+    right:[
+      "Ordinary things become strange when you remember them from childhood.",
+      "Maybe memory is partly the art of giving small objects a second life."
+    ]
+  },
+  {
+    date:"24 AUG 2026",
+    title:"Fragments",
+    left:[
+      "A thought, before it disappears.",
+      "A sentence that doesn't know where it belongs yet.",
+      "A tiny piece of something."
+    ],
+    right:[
+      "Not everything needs to become a finished story.",
+      "Some things can simply be kept.",
+      "That's what the pocket is for."
+    ]
+  }
+];
+
+const backdrop=document.getElementById("readerBackdrop");
+const title=document.getElementById("readerTitle");
+const date=document.getElementById("readerDate");
+const left=document.getElementById("readerLeft");
+const right=document.getElementById("readerRight");
+const prev=document.getElementById("prevPiece");
+const next=document.getElementById("nextPiece");
+const close=document.getElementById("closeReader");
+let current=0;
+
+function openPiece(index){
+  current=Math.max(0,Math.min(pieces.length-1,index));
+  const p=pieces[current];
+  date.textContent=p.date;
+  title.textContent=p.title;
+  left.innerHTML=p.left.map(x=>"<p>"+escapeHtml(x)+"</p>").join("");
+  right.innerHTML=p.right.map(x=>"<p>"+escapeHtml(x)+"</p>").join("");
+  prev.disabled=current===0;
+  next.disabled=current===pieces.length-1;
+  backdrop.classList.add("open");
+  close.focus();
+  document.body.style.overflow="hidden";
+}
+
+function closePiece(){
+  backdrop.classList.remove("open");
+  document.body.style.overflow="";
+}
+
+function escapeHtml(text){
+  return text.replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[c]));
+}
+
+document.querySelectorAll("[data-open]").forEach(btn=>{
+  btn.addEventListener("click",()=>openPiece(Number(btn.dataset.open)));
+});
+close.addEventListener("click",closePiece);
+prev.addEventListener("click",()=>openPiece(current-1));
+next.addEventListener("click",()=>openPiece(current+1));
+backdrop.addEventListener("click",e=>{
+  if(e.target===backdrop) closePiece();
+});
+document.addEventListener("keydown",e=>{
+  if(!backdrop.classList.contains("open")) return;
+  if(e.key==="Escape") closePiece();
+  if(e.key==="ArrowLeft" && current>0) openPiece(current-1);
+  if(e.key==="ArrowRight" && current<pieces.length-1) openPiece(current+1);
+});
+</script>
+</body>
+</html>
