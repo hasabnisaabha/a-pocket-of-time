@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>A Pocket of Time</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#f7eadb}
+  body{display:flex;justify-content:center}
+  .page{
+    position:relative;
+    width:min(100vw,768px);
+    line-height:0;
+  }
+  .page>img{
+    display:block;
+    width:100%;
+    height:auto;
+  }
+
+  /* Invisible clickable areas placed over the exact artwork. */
+  .post{
+    position:absolute;
+    width:15%;
+    aspect-ratio:1;
+    border-radius:50%;
+    cursor:pointer;
+    background:transparent;
+    border:0;
+    padding:0;
+  }
+  .p1{left:2.8%;top:58.0%}
+  .p2{left:27.0%;top:58.0%}
+  .p3{left:51.0%;top:58.0%}
+  .p4{left:75.0%;top:58.0%}
+
+  .calendar{
+    position:absolute;
+    left:9.0%;
+    top:84.0%;
+    width:33%;
+    height:13%;
+    background:transparent;
+    border:0;
+    cursor:pointer;
+  }
+
+  .post:focus-visible,.calendar:focus-visible{
+    outline:2px solid #4b4742;
+    outline-offset:3px;
+  }
+
+  .message{
+    position:fixed;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    padding:9px 16px;
+    border-radius:18px;
+    background:#625c55;
+    color:#fffaf4;
+    font:16px/1.2 sans-serif;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s;
+  }
+  .message.show{opacity:1}
+</style>
+</head>
+<body>
+<main class="page" aria-label="A Pocket of Time">
+  <img src="mockup.png" alt="A Pocket of Time website artwork">
+
+  <button class="post p1" aria-label="Open post 1"></button>
+  <button class="post p2" aria-label="Open post 2"></button>
+  <button class="post p3" aria-label="Open post 3"></button>
+  <button class="post p4" aria-label="Open post 4"></button>
+  <button class="calendar" aria-label="Open calendar"></button>
+</main>
+<div class="message" id="message" aria-live="polite"></div>
+
+<script>
+const message=document.getElementById("message");
+function show(text){
+  message.textContent=text;
+  message.classList.add("show");
+  clearTimeout(window.t);
+  window.t=setTimeout(()=>message.classList.remove("show"),1400);
+}
+document.querySelectorAll(".post").forEach((b,i)=>{
+  b.addEventListener("click",()=>show("Post "+(i+1)+" will open here."));
+});
+document.querySelector(".calendar").addEventListener("click",()=>show("The calendar will open entries here."));
+</script>
+</body>
+</html>
