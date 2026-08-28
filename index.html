@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A Pocket of Time</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500&family=Kalam:wght@300;400&display=swap');
+:root{--paper:#f7eadb;--ink:#4b4742;--line:rgba(75,71,66,.34);--circle:#8d857b}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:Kalam,cursive}
+.page{width:100%;max-width:1080px;margin:auto;min-height:100vh;padding:44px 32px 90px;position:relative}
+.menu{position:absolute;top:28px;right:38px;width:32px;height:32px;border:0;padding:4px;background:transparent;cursor:pointer}.menu span{display:block;height:1.5px;margin:6px 0;background:var(--ink);opacity:.7}
+.title{margin:0;text-align:center;font-family:Caveat,cursive;font-size:clamp(43px,5vw,70px);font-weight:400}
+.hero{display:block;width:min(390px,43vw);min-width:270px;margin:10px auto 0}
+.posts{margin-top:clamp(500px,36vw,570px);display:grid;grid-template-columns:repeat(4,1fr);gap:70px;padding:0 20px}
+.post{width:116px;height:116px;margin:auto;padding:0;border:0;border-radius:50%;background:var(--circle);display:grid;place-items:center;cursor:pointer;transition:transform .15s ease}.post:hover{transform:translateY(-3px)}.post:focus-visible{outline:2px solid var(--ink);outline-offset:5px}.post img{width:94px;height:94px;object-fit:contain}
+.post-title{display:block;margin:10px auto 0;text-align:center;font-family:Caveat,cursive;font-size:20px;max-width:150px}
+.calendar-wrap{width:min(850px,82%);margin:300px auto 0}.calendar{border:1px solid var(--line);border-radius:12px;overflow:hidden}.month{height:74px;display:grid;grid-template-columns:70px 1fr 70px;align-items:center;border-bottom:1px solid var(--line);text-align:center;font-family:Caveat,cursive;font-size:28px}.arrow{border:0;background:transparent;color:var(--ink);font-family:inherit;font-size:32px;cursor:pointer}
+.days,.dates{display:grid;grid-template-columns:repeat(7,1fr)}.day{min-height:45px;display:grid;place-items:center;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:18px}.day:last-child{border-right:0}.dates{grid-auto-rows:86px}.date{position:relative;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px 10px;font-size:18px;cursor:default}.date:nth-child(7n){border-right:0}.date:nth-last-child(-n+7){border-bottom:0}.entry{cursor:pointer}.entry img{position:absolute;left:50%;bottom:7px;transform:translateX(-50%);width:42px;height:42px;object-fit:contain}.legend{text-align:center;font-family:Caveat,cursive;font-size:20px;margin:18px 0 0}.legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--circle);margin-right:5px}
+@media(max-width:700px){.page{padding:30px 18px 60px}.menu{right:18px;top:18px}.title{margin-top:14px}.hero{width:min(340px,82vw);margin-top:8px}.posts{margin-top:390px;gap:20px;padding:0}.post{width:76px;height:76px}.post img{width:63px;height:63px}.post-title{font-size:17px}.calendar-wrap{width:100%;margin-top:190px}.month{height:58px;grid-template-columns:48px 1fr 48px;font-size:24px}.day{min-height:36px;font-size:14px}.dates{grid-auto-rows:62px}.date{padding:6px;font-size:14px}.entry img{width:31px;height:31px;bottom:5px}}
+</style>
+</head>
+<body>
+<main class="page">
+<button class="menu" type="button" aria-label="Open menu"><span></span><span></span><span></span></button>
+<h1 class="title">A Pocket of Time</h1>
+<img class="hero" src="writing-circle.png" alt="Original drawing">
+<section class="posts" id="posts" aria-label="Writing posts"></section>
+<section class="calendar-wrap" aria-label="Writing calendar">
+<div class="calendar">
+<div class="month"><button class="arrow" id="prev" type="button">‹</button><div id="monthName"></div><button class="arrow" id="next" type="button">›</button></div>
+<div class="days"><div class="day">Mon</div><div class="day">Tue</div><div class="day">Wed</div><div class="day">Thu</div><div class="day">Fri</div><div class="day">Sat</div><div class="day">Sun</div></div>
+<div class="dates" id="dates"></div>
+</div>
+<p class="legend"><span class="legend-dot"></span>has an entry</p>
+</section>
+</main>
+<script>
+/*
+  THIS is the only file you normally edit when adding a post.
+  Add another object to POSTS. The homepage and calendar update automatically.
+*/
+const POSTS = [
+  // Example:
+  // {title:"Grave Robbing", date:"2026-08-28", url:"posts/grave-robbing.html"}
+];
+
+const postsEl=document.getElementById("posts"), datesEl=document.getElementById("dates"), monthName=document.getElementById("monthName");
+let view=new Date(); view.setDate(1);
+
+function cleanDate(s){const [y,m,d]=s.split("-").map(Number);return new Date(Date.UTC(y,m-1,d))}
+function renderPosts(){
+  postsEl.innerHTML="";
+  POSTS.forEach(p=>{
+    const a=document.createElement("a"); a.href=p.url; a.style.textDecoration="none"; a.style.color="inherit";
+    a.innerHTML=`<span class="post"><img src="bottle-post.png" alt=""></span><span class="post-title">${p.title}</span>`;
+    postsEl.appendChild(a);
+  });
+}
+function renderCalendar(){
+  const y=view.getFullYear(), m=view.getMonth();
+  monthName.textContent=view.toLocaleString("en",{month:"long"})+" "+y;
+  datesEl.innerHTML="";
+  const first=new Date(y,m,1), start=(first.getDay()+6)%7, days=new Date(y,m+1,0).getDate();
+  for(let i=0;i<start;i++) datesEl.appendChild(document.createElement("div"));
+  for(let d=1;d<=days;d++){
+    const cell=document.createElement("div"); cell.className="date"; cell.textContent=d;
+    const key=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const p=POSTS.find(x=>x.date===key);
+    if(p){
+      cell.classList.add("entry"); cell.title=p.title;
+      cell.innerHTML=`<span>${d}</span><img src="bottle-post.png" alt="${p.title}">`;
+      cell.addEventListener("click",()=>location.href=p.url);
+    }
+    datesEl.appendChild(cell);
+  }
+}
+document.getElementById("prev").onclick=()=>{view.setMonth(view.getMonth()-1);renderCalendar()};
+document.getElementById("next").onclick=()=>{view.setMonth(view.getMonth()+1);renderCalendar()};
+renderPosts();renderCalendar();
+</script>
+</body>
+</html>
