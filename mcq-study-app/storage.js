@@ -1,0 +1,10 @@
+const DB='local-mcq-study'; const VER=1;
+let dbPromise;
+function open(){ if(dbPromise)return dbPromise; dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open(DB,VER); r.onupgradeneeded=()=>{const db=r.result; ['imports','quizzes','progress','settings','daily'].forEach(s=>{if(!db.objectStoreNames.contains(s))db.createObjectStore(s,{keyPath:'id'});});}; r.onsuccess=()=>resolve(r.result); r.onerror=()=>reject(r.error);}); return dbPromise; }
+export async function put(store,value){const db=await open(); return new Promise((res,rej)=>{const t=db.transaction(store,'readwrite'); t.objectStore(store).put(value); t.oncomplete=()=>res(value); t.onerror=()=>rej(t.error);});}
+export async function get(store,id){const db=await open();return new Promise((res,rej)=>{const t=db.transaction(store,'readonly');const r=t.objectStore(store).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+export async function all(store){const db=await open();return new Promise((res,rej)=>{const t=db.transaction(store,'readonly');const r=t.objectStore(store).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+export async function del(store,id){const db=await open();return new Promise((res,rej)=>{const t=db.transaction(store,'readwrite');t.objectStore(store).delete(id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
+export async function clearStore(store){const db=await open();return new Promise((res,rej)=>{const t=db.transaction(store,'readwrite');t.objectStore(store).clear();t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
+export async function exportAll(){return {version:1,exportedAt:new Date().toISOString(),imports:await all('imports'),quizzes:await all('quizzes'),progress:await all('progress'),settings:await all('settings'),daily:await all('daily')};}
+export async function importAll(data){for(const s of ['imports','quizzes','progress','settings','daily']) for(const x of (data?.[s]||[])) await put(s,x);}
