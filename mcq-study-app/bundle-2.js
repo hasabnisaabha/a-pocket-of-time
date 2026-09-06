@@ -1,218 +1,73 @@
-// ===== mcq-parser.js =====
-/* General-purpose MCQ parser. It never writes to storage or creates quiz records. */
-
-const HEADING_RE = /^(?:answer\s*key|answers?|solutions?|detailed\s+answers?|detailed\s+solutions?|explanations?)\s*:?[\s]*$/i;
-const OPTION_RE = /^(?:\(([A-D])\)|([A-D])[.)])\s+(.+)$/i;
-const OPTION_ONLY_RE = /^(?:\(([A-D])\)|([A-D])[.)])\s*$/i;
-const NUM_OPTION_RE = /^(?:\(([1-4])\)|([1-4])[.)])\s+(.+)$/;
-const QUESTION_RE = /^(?:Q(?:uestion)?\s*\.?\s*#?\s*(\d+)\s*[:.)-]?|Question\s+(\d+)\s*[:.)-]?|(\d+)\s*[.)])\s*(.*)$/i;
-const QUESTION_ONLY_RE = /^(?:Q(?:uestion)?\s*\.?\s*#?\s*(\d+)|Question\s+(\d+)|\d+)\s*:?$/i;
-const LOCAL_ANSWER_RE = /^(?:answer|correct\s+answer)\s*[:\-]?\s*(?:option\s*)?([A-D1-4])\b/i;
-
-function clean(s) { return String(s ?? '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').trim(); }
-function nonEmpty(lines) { return lines.map(clean).filter(Boolean); }
-function id() { return 'q_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10); }
-function optionLetter(raw) { const x = String(raw).toUpperCase(); return /^[1-4]$/.test(x) ? 'ABCD'[Number(x)-1] : x; }
-function isAnswerHeading(line) { return HEADING_RE.test(clean(line)); }
-function isOption(line) { return OPTION_RE.test(clean(line)) || OPTION_ONLY_RE.test(clean(line)) || NUM_OPTION_RE.test(clean(line)); }
-function parseOption(line, numericMode=false) {
-  const text=clean(line); const m = (numericMode ? NUM_OPTION_RE : OPTION_RE).exec(text) || (numericMode ? null : OPTION_ONLY_RE.exec(text));
-  if (!m) return null;
-  return { letter: optionLetter(m[1] || m[2]), text: clean(m[3] || ''), raw: line };
+// ===== robust mcq-parser.js =====
+const QSTART=/^(?:Q(?:uestion)?\s*#?\s*(\d+)\s*[:.)-]?|Question\s+(\d+)\s*[:.)-]?|(\d+)\s*[.)-]?)(?:\s+|$)(.*)$/i;
+const ANSWER_HEAD=/^(?:answer\s*key|answers?|solutions?|detailed\s+answers?|detailed\s+solutions?|explanations?)\s*:?[\s]*$/i;
+const LOCAL_ANS=/^(?:answer|correct\s+answer)\s*[:\-]?\s*(?:option\s*)?([A-D1-4])\b/i;
+const MARKER=/(?:^|\s|\()([A-Da-d])\s*[.)\-:](?=\s|$)/g;
+const NUMMARK=/(?:^|\s|\()([1-4])\s*[.)\-:](?=\s|$)/g;
+function clean(s){return String(s??'').replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').trim()}
+function answerLetter(x){x=String(x||'').toUpperCase();return /^[1-4]$/.test(x)?'ABCD'[+x-1]:x}
+function isHead(s){return ANSWER_HEAD.test(clean(s))}
+function qStart(s){const m=QSTART.exec(clean(s));return m?{number:m[1]||m[2]||m[3]||null,text:clean(m[4]||'')}:null}
+function id(){return 'q_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9)}
+function parseInline(text){
+  const s=clean(text); let ms=[...s.matchAll(MARKER)];
+  if(ms.length<4){ms=[...s.matchAll(NUMMARK)];if(ms.length<4)return null}
+  const marks=ms.slice(0,8).map(m=>({i:m.index+(m[0].startsWith(' ')?1:0),k:answerLetter(m[1])}));
+  const wanted=['A','B','C','D']; if(!wanted.every(k=>marks.some(m=>m.k===k)))return null;
+  const first=marks.find(m=>m.k==='A'); const opts={};
+  for(let n=0;n<marks.length;n++){const a=marks[n],b=marks[n+1];if(!wanted.includes(a.k))continue;opts[a.k]=clean(s.slice(a.i+a.k.length+(s[a.i+a.k.length]===' '?1:0),b?b.i:s.length))}
+  if(!wanted.every(k=>opts[k]))return null;
+  return {question:clean(s.slice(0,first.i)),options:opts}
 }
-function numericOptionSequence(lines, i) {
-  const nums=[];
-  for(let j=i;j<Math.min(lines.length,i+6);j++){ const m=NUM_OPTION_RE.exec(clean(lines[j])); if(m) nums.push(Number(m[1]||m[2])); else if(clean(lines[j])) break; }
-  return nums.length>=4 && new Set(nums.slice(0,4)).size===4;
-}
-
-function parseQuestionStart(line) {
-  const s = clean(line);
-  if (isAnswerHeading(s) || OPTION_RE.test(s)) return null;
-  const m = QUESTION_RE.exec(s);
-  if (!m) return null;
-  return { number: m[1] || m[2] || m[3] || null, text: clean(m[4] || ''), raw: line };
-}
-function looksLikeNumberedQuestion(lines, i) {
-  const s = clean(lines[i]);
-  if (!/^\d+[.)]\s+/.test(s)) return false;
-  const n = Number(s.match(/^(\d+)/)[1]);
-  // A numbered line is considered a question only when a plausible 4-option set follows.
-  // This prevents ordinary numbered prose from becoming MCQs.
-  let seenNum = [], seenLetter = [];
-  for (let j=i+1; j<Math.min(lines.length, i+24); j++) {
-    const l=clean(lines[j]); if (!l) continue;
-    if (isAnswerHeading(l)) break;
-    const nm=NUM_OPTION_RE.exec(l); if (nm) { seenNum.push(Number(nm[1]||nm[2])); if (seenNum.length>=4 && new Set(seenNum).size===4) return true; }
-    const lm=OPTION_RE.exec(l) || OPTION_ONLY_RE.exec(l); if (lm) { seenLetter.push((lm[1]||lm[2]).toUpperCase()); if (seenLetter.length>=4 && new Set(seenLetter).size===4) return true; }
-    if (seenNum.length===0 && seenLetter.length===0 && QUESTION_RE.test(l)) break;
-  }
-  return false;
-}
-
-function splitInline(text) {
-  // Finds lettered option markers occurring after question text. Conservative on purpose.
-  const re = /(?:^|\s)(\(?[A-D]\)?[.)])\s+/gi;
-  const matches=[]; let m;
-  while ((m=re.exec(text))) matches.push({index:m.index + (m[0].startsWith(' ') ? 1 : 0), marker:m[1]});
-  if (matches.length < 4) return null;
-  const first=matches[0];
-  const opts={};
-  for(let i=0;i<matches.length;i++){
-    const a=matches[i], b=matches[i+1];
-    const marker=a.marker.replace(/[().]/g,'').toUpperCase();
-    if (!'ABCD'.includes(marker)) continue;
-    const end=b ? b.index : text.length;
-    opts[marker]=clean(text.slice(a.index+a.marker.length,end));
-  }
-  if(['A','B','C','D'].every(k=>opts[k])) return {question: clean(text.slice(0,first.index)), options:opts};
+function parseOptionLine(s){
+  let m=/^\(?([A-Da-d])\)?\s*[.)\-:]\s*(.*)$/i.exec(clean(s));
+  if(m)return {k:m[1].toUpperCase(),text:clean(m[2])};
+  m=/^\(?([1-4])\)?\s*[.)\-:]\s*(.*)$/.exec(clean(s));
+  if(m)return {k:answerLetter(m[1]),text:clean(m[2])};
   return null;
 }
-
-function extractAnswerEntries(lines, start) {
-  const entries=[];
-  for(let i=start;i<lines.length;i++){
-    const s=clean(lines[i]); if(!s) continue;
-    if (/^(?:detailed\s+answers?|detailed\s+solutions?|explanations?)\b/i.test(s) && !/^answers?\s*:/i.test(s)) break;
-    let m=/^(\d+)\s*[.)\-:]\s*([A-D1-4])\b/i.exec(s);
-    if(m) entries.push({number:Number(m[1]), answer:optionLetter(m[2]), line:i});
-    else {
-      m=/^(?:Q(?:uestion)?\s*\.?\s*(\d+)|Question\s+(\d+))\s*[:.)-]?\s*([A-D1-4])\b/i.exec(s);
-      if(m) entries.push({number:Number(m[1]||m[2]), answer:optionLetter(m[3]), line:i});
+function extractAnswers(lines,start){const out=[];for(let i=start;i<lines.length;i++){const s=clean(lines[i]);let m=/^(?:Q(?:uestion)?\s*)?(\d+)\s*[:.)-]?\s*([A-D1-4])\b/i.exec(s);if(m)out.push({n:+m[1],a:answerLetter(m[2])})}return out}
+function parseMCQs(txt,meta={}){
+  const raw=String(txt??'').replace(/\r/g,'').split('\n');
+  const lines=raw.map(clean); const head=lines.findIndex(isHead); const end=head>=0?head:lines.length;
+  const candidates=[]; const rejected=[];
+  let current=null, optionMode=false, lastOpt=null;
+  function finish(){
+    if(!current)return;
+    const opts=current.options; const missing=['A','B','C','D'].filter(k=>!opts[k]);
+    const reasons=[]; if(!current.question.trim())reasons.push('Missing question text'); if(missing.length)reasons.push('Missing option(s): '+missing.join(', ')); if(!current.correctAnswer)reasons.push('No confidently mapped correct answer');
+    current.status=reasons.length?'REVIEW':'READY';current.diagnostic=reasons.join('; ')||'All four options and answer detected.';candidates.push(current);current=null;optionMode=false;lastOpt=null;
+  }
+  function begin(number,text,line){finish();current={id:id(),displayedNumber:number,question:clean(text),options:{A:'',B:'',C:'',D:''},correctAnswer:null,status:'REVIEW',sourceLine:line+1,sourcePage:meta.pageMap?.[line]??null,rawText:raw[line]||'',diagnostic:''}}
+  for(let i=0;i<end;i++){
+    const s=lines[i];if(!s)continue;
+    if(isHead(s)){finish();break}
+    const qs=qStart(s);
+    const inline=parseInline(s);
+    if(qs){
+      begin(qs.number,qs.text,i);
+      if(inline){current.question=inline.question;current.options=inline.options;optionMode=true;lastOpt='D';}
+      continue;
     }
-  }
-  return entries;
-}
-
-function detectAnswerSection(lines) {
-  for(let i=0;i<lines.length;i++) if(isAnswerHeading(lines[i])) return i;
-  return -1;
-}
-
-function parseMCQs(txt, metadata={}) {
-  const rawLines=String(txt ?? '').split(/\r?\n/);
-  const lines=rawLines.map(x=>x.replace(/\r/g,''));
-  const answerSection=detectAnswerSection(lines);
-  const scanEnd=answerSection>=0 ? answerSection : lines.length;
-  const candidates=[];
-  const diagnostics=[];
-  let i=0;
-
-  while(i<scanEnd){
-    let start=parseQuestionStart(lines[i]);
-    if (start && /^\d+[.)]\s+/.test(clean(lines[i])) && !looksLikeNumberedQuestion(lines,i) && !splitInline(start.text)) start=null;
-    if(!start){
-      // Question number on its own line.
-      if(QUESTION_ONLY_RE.test(clean(lines[i])) && !isOption(lines[i])) {
-        const m=QUESTION_ONLY_RE.exec(clean(lines[i]));
-        start={number:m?.[1]||m?.[2]||clean(lines[i]).match(/^\d+/)?.[0]||null,text:''};
-      }
+    if(inline && !current){begin(null,inline.question,i);current.options=inline.options;optionMode=true;lastOpt='D';continue}
+    const op=parseOptionLine(s);
+    if(op){
+      if(!current)begin(null,'',i);
+      current.options[op.k]=op.text;lastOpt=op.k;optionMode=true;current.rawText+='\n'+raw[i];continue;
     }
-    if(!start){i++; continue;}
-
-    const sourceLine=i+1;
-    const originalNumber=start.number;
-    let qText=start.text;
-    let opts={};
-    let numericMode=false;
-    let j=i+1;
-    let localAnswer=null;
-    const blockLines=[lines[i]];
-
-    const inline=splitInline(start.text);
-    if(inline){ qText=inline.question; opts=inline.options; j=i+1; }
-
-    while(j<scanEnd){
-      const l=clean(lines[j]);
-      if(!l){j++; continue;}
-      if(LOCAL_ANSWER_RE.test(l)){ localAnswer=optionLetter(LOCAL_ANSWER_RE.exec(l)[1]); j++; continue; }
-      const nextQBeforeOption=parseQuestionStart(l);
-      if(nextQBeforeOption && Object.keys(opts).length>=4) break;
-      if(nextQBeforeOption && !numericMode && !numericOptionSequence(lines,j)) break;
-      let op=parseOption(l,false);
-      if(!op && (Object.keys(opts).length===0 || numericMode) && NUM_OPTION_RE.test(l) && (numericMode || numericOptionSequence(lines,j))) { op=parseOption(l,true); numericMode=true; }
-      if(op){
-        opts[op.letter]=op.text; blockLines.push(lines[j]); j++; continue;
-      }
-      // Once options have started, non-option text is a continuation of the last option.
-      if(Object.keys(opts).length>0 && !parseQuestionStart(l)){
-        if(['A','B','C','D'].some(k=>opts[k]==='')){ const empty=['A','B','C','D'].find(k=>opts[k]===''); opts[empty]=l; blockLines.push(lines[j]); j++; continue; }
-        const last=['A','B','C','D'].reverse().find(k=>opts[k]);
-        if(last) opts[last]=clean(opts[last]+' '+l); else qText=clean(qText+' '+l);
-        blockLines.push(lines[j]); j++; continue;
-      }
-      // Before options, collect question continuation unless this is another question.
-      const nextQ=parseQuestionStart(l);
-      if(!nextQ){ qText=clean(qText+' '+l); blockLines.push(lines[j]); j++; continue; }
-      break;
-    }
-
-    // Avoid treating ordinary numeric prose as a candidate unless four options exist or it is explicitly labelled Question/Q.
-    const explicit=/^(?:Q(?:uestion)?|Question)\b/i.test(clean(lines[i]));
-    const optionCount=Object.keys(opts).length;
-    const missing=['A','B','C','D'].filter(k=>!opts[k]);
-    let status='REVIEW';
-    let reason=[];
-    if(!qText) reason.push('Missing question text');
-    if(optionCount<4) reason.push(`Only ${optionCount} of 4 options detected`);
-    if(missing.length) reason.push('Missing option(s): '+missing.join(', '));
-    let answer=localAnswer;
-    if(answer && !opts[answer]) { reason.push('Detected answer points to a missing option'); answer=null; }
-    const candidate={
-      id:id(), displayedNumber:originalNumber, question:clean(qText),
-      options:{A:opts.A||'',B:opts.B||'',C:opts.C||'',D:opts.D||''},
-      correctAnswer:answer||null, status:'REVIEW', sourcePage:metadata.pageMap?.[sourceLine-1] ?? null,
-      sourceLine, rawText:blockLines.join('\n'), diagnostic:reason.join('; ')||'Answer not yet confidently mapped'
-    };
-    candidates.push(candidate);
-    i=Math.max(j,i+1);
+    const ans=LOCAL_ANS.exec(s);if(ans&&current){current.correctAnswer=answerLetter(ans[1]);continue}
+    if(current&&optionMode&&lastOpt){current.options[lastOpt]=clean(current.options[lastOpt]+' '+s);current.rawText+='\n'+raw[i];continue}
+    if(current)current.question=clean(current.question+' '+s);
   }
-
-  // Map a global answer key by sequence, not by question number. This remains safe when numbering repeats.
-  if(answerSection>=0){
-    const entries=extractAnswerEntries(lines,answerSection+1);
-    const usable=candidates.filter(c=>c.status==='REVIEW');
-    if(entries.length===candidates.length){
-      candidates.forEach((c,idx)=>{ if(!c.correctAnswer){ c.correctAnswer=entries[idx].answer; c.diagnostic='Mapped from answer key by document order (not question number).'; }});
-    } else {
-      // If counts do not match, only map when the key's sequence aligns with unique displayed numbers.
-      const counts=new Map(); candidates.forEach(c=>counts.set(c.displayedNumber,(counts.get(c.displayedNumber)||0)+1));
-      entries.forEach(e=>{
-        const matches=candidates.filter(c=>String(c.displayedNumber)===String(e.number));
-        if(matches.length===1 && !matches[0].correctAnswer){ matches[0].correctAnswer=e.answer; matches[0].diagnostic='Mapped from answer key using a unique displayed question number.'; }
-      });
-    }
+  finish();
+  const entries=head>=0?extractAnswers(lines,head+1):[];
+  if(entries.length){
+    if(entries.length===candidates.length)candidates.forEach((c,i)=>{if(!c.correctAnswer)c.correctAnswer=entries[i].a});
+    else for(const e of entries){const m=candidates.filter(c=>String(c.displayedNumber)===String(e.n));if(m.length===1&&!m[0].correctAnswer)m[0].correctAnswer=e.a}
   }
-
-  for(const c of candidates){
-    const missing=['A','B','C','D'].filter(k=>!c.options[k]);
-    const reasons=[];
-    if(!c.question) reasons.push('Missing question text');
-    if(missing.length) reasons.push('Missing option(s): '+missing.join(', '));
-    if(!c.correctAnswer) reasons.push('No confidently mapped correct answer');
-    if(reasons.length===0) c.status='READY'; else { c.status='REVIEW'; c.diagnostic=reasons.join('; '); }
-  }
-
-  // Strong rejection: numbered prose with no options, not explicitly labelled as a question.
-  // Preserve it in diagnostics, but do not present it as an MCQ candidate.
-  const rejected=[];
-  const allNumbered=rawLines.map((line,idx)=>({line,idx})).filter(x=>/^\s*\d+[.)]\s+/.test(x.line));
-  const candidateStarts=new Set(candidates.map(c=>c.sourceLine-1));
-  for(const x of allNumbered){
-    if(candidateStarts.has(x.idx)) continue;
-    const s=clean(x.line);
-    if(!looksLikeNumberedQuestion(rawLines,x.idx) && !OPTION_RE.test(s) && !OPTION_ONLY_RE.test(s) && !numericOptionSequence(rawLines,x.idx)) rejected.push({id:id(),status:'REJECTED AS NON-MCQ',sourceLine:x.idx+1,rawText:x.line,diagnostic:'Numbered prose did not show a plausible four-option MCQ structure.'});
-  }
-
-  const ready=candidates.filter(c=>c.status==='READY').length;
-  const review=candidates.filter(c=>c.status==='REVIEW').length;
-  return {
-    version:'1.0', sourceName:metadata.sourceName||'Imported source', sourceFilename:metadata.sourceFilename||'',
-    importedAt:new Date().toISOString(), candidates, rejected, diagnostics,
-    counts:{detected:candidates.length,ready,review,rejected:rejected.length}
-  };
+  for(const c of candidates){const missing=['A','B','C','D'].filter(k=>!c.options[k]);const reasons=[];if(!c.question)reasons.push('Missing question text');if(missing.length)reasons.push('Missing option(s): '+missing.join(', '));if(!c.correctAnswer)reasons.push('No confidently mapped correct answer');c.status=reasons.length?'REVIEW':'READY';c.diagnostic=reasons.join('; ')||'All four options and answer detected.'}
+  const valid=candidates.filter(c=>c.question&&Object.values(c.options).filter(Boolean).length>=2);
+  const kept=[];for(const c of candidates){if(Object.values(c.options).filter(Boolean).length>=2||c.question)kept.push(c);else rejected.push({id:id(),status:'REJECTED AS NON-MCQ',sourceLine:c.sourceLine,rawText:c.rawText,diagnostic:'Could not find a plausible question/options structure.'})}
+  return {version:'2.0',sourceName:meta.sourceName||'Imported source',sourceFilename:meta.sourceFilename||'',importedAt:new Date().toISOString(),candidates:kept,rejected,diagnostics:[],counts:{detected:kept.length,ready:kept.filter(c=>c.status==='READY').length,review:kept.filter(c=>c.status==='REVIEW').length,rejected:rejected.length}}
 }
-
-function validateApprovedQuestions(questions){
-  return questions.every(q=>q.question?.trim() && ['A','B','C','D'].every(k=>q.options?.[k]?.trim()) && ['A','B','C','D'].includes(q.correctAnswer));
-}
+function validateApprovedQuestions(qs){return qs.every(q=>q.question?.trim()&&['A','B','C','D'].every(k=>q.options?.[k]?.trim())&&['A','B','C','D'].includes(q.correctAnswer))}
