@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MCQ Study</title>
+<style>
+:root{--bg:#f6f4f0;--card:#fff;--ink:#171717;--muted:#777;--line:#dedbd5;--accent:#171717;--good:#e9f6ed;--bad:#fff0f0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif}main{max-width:760px;margin:auto;padding:18px}.top{padding:18px 2px}.top h1{font-size:34px;margin:0 0 5px}.muted{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:12px 0}input,button{font:inherit;border-radius:11px;padding:12px;border:1px solid var(--line);width:100%;margin:5px 0}button{background:var(--accent);color:#fff;border:0;font-weight:700;cursor:pointer}.secondary{background:#eceae5;color:#111}.tabs{display:flex;gap:7px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}.tabs button{flex:1}.hidden{display:none}.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}.channel{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding:13px 0}.channel button{width:auto}.pill{font-size:12px;padding:5px 9px;background:#eee;border-radius:999px}.q{font-size:20px;line-height:1.4}.opt{padding:14px;border:1px solid var(--line);border-radius:12px;margin:8px 0;cursor:pointer}.good{background:var(--good);border-color:#79b88a}.bad{background:var(--bad);border-color:#d78787}.small{font-size:13px}.notice{background:#f0eee9;border-radius:12px;padding:12px;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><h1>MCQ Study</h1><div class="muted">Your Telegram questions, in one study place.</div></div>
+<section id="login" class="card">
+<h2>Connect Telegram</h2>
+<p class="muted">This uses Telegram's browser-capable TDLib client. Your API credentials and session are kept in this browser. Never send your API hash or login code to anyone.</p>
+<input id="apiId" inputmode="numeric" placeholder="API ID">
+<input id="apiHash" placeholder="API hash">
+<button id="start">Connect</button>
+<div id="auth" class="hidden">
+<input id="phone" placeholder="Your Telegram phone number, e.g. +91...">
+<button id="sendPhone">Send login code</button>
+<input id="code" class="hidden" placeholder="Telegram login code">
+<button id="checkCode" class="hidden">Verify code</button>
+<input id="password" class="hidden" type="password" placeholder="Telegram 2FA password, if enabled">
+<button id="checkPassword" class="hidden">Verify password</button>
+</div>
+<p id="status" class="small"></p>
+</section>
+
+<section id="app" class="hidden">
+<div class="tabs"><button onclick="tab('channels')">Channels</button><button onclick="tab('quiz')">Quiz</button><button onclick="tab('bank')">Question bank</button></div>
+<section id="channels" class="card"><h2>Channels</h2><p class="muted">Only channels your Telegram account can access are shown. Telegram-protected channels are left protected.</p><button class="secondary" onclick="loadChannels()">Refresh</button><div id="channelList"></div></section>
+<section id="quiz" class="card hidden"><h2>Quiz</h2><button onclick="startQuiz()">Start 10 questions</button><div id="quizArea"></div></section>
+<section id="bank" class="card hidden"><h2>Question bank</h2><div id="bankArea"></div></section>
+</section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@awesomegram/tdweb@1.8.40/dist/tdweb.js"></script>
+<script>
+const TdClient=(window.tdweb&& (window.tdweb.default||window.tdweb));
+let td=null, chats=[], questions=JSON.parse(localStorage.getItem('mcqStudyQuestions')||'[]');
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function status(t){$('status').textContent=t}
+function tab(name){['channels','quiz','bank'].forEach(x=>$(x).classList.toggle('hidden',x!==name));if(name==='bank')renderBank()}
+function save(){localStorage.setItem('mcqStudyQuestions',JSON.stringify(questions))}
+function parseMCQ(text){
+ text=(text||'').replace(/\r/g,'').trim();
+ const m=text.match(/([\s\S]+?)\n\s*(?:A[).:\-]\s*)([\s\S]+?)\n\s*(?:B[).:\-]\s*)([\s\S]+?)\n\s*(?:C[).:\-]\s*)([\s\S]+?)\n\s*(?:D[).:\-]\s*)([\s\S]+?)(?=\n(?:Answer|Ans|Correct answer|Explanation)\b|$)/i);
+ if(!m)return null;
+ const am=text.match(/(?:Answer|Ans|Correct answer)\s*[:\-]\s*([ABCD1-4])\b/i);
+ const em=text.match(/Explanation\s*[:\-]\s*([\s\S]+)$/i);
+ return {question:m[1].trim(),options:[m[2].trim(),m[3].trim(),m[4].trim(),m[5].trim()],answer:am?am[1].toUpperCase():'',explanation:em?em[1].trim():''};
+}
+async function send(q){return await td.send(q)}
+$('start').onclick=()=>{
+ if(!TdClient){status('The Telegram client library did not load. Reload the page and try again.');return}
+ const id=Number($('apiId').value.trim()), hash=$('apiHash').value.trim();
+ if(!id||!hash){status('Enter your API ID and API hash first.');return}
+ $('auth').classList.remove('hidden'); $('start').disabled=true; status('Telegram client started. Enter your phone number.');
+ td=new TdClient({instanceName:'mcq-study',useDatabase:true,logVerbosityLevel:1,jsLogVerbosityLevel:'error',onUpdate:onUpdate});
+};
+async function onUpdate(u){
+ if(u['@type']!=='updateAuthorizationState')return;
+ const s=u.authorization_state['@type'];
+ try{
+  if(s==='authorizationStateWaitTdlibParameters'){
+   await send({'@type':'setTdlibParameters','parameters':{use_test_dc:false,database_directory:'mcq-study',use_message_database:true,use_secret_chats:false,api_id:Number($('apiId').value),api_hash:$('apiHash').value,system_language_code:navigator.language||'en',device_model:'MCQ Study',system_version:navigator.userAgent,application_version:'1.0',enable_storage_optimizer:true}});
+  } else if(s==='authorizationStateWaitEncryptionKey'){
+   await send({'@type':'checkDatabaseEncryptionKey'});
+  } else if(s==='authorizationStateWaitPhoneNumber'){
+   status('Enter your Telegram phone number, then tap Send login code.'); $('phone').focus();
+  } else if(s==='authorizationStateWaitCode'){
+   $('code').classList.remove('hidden');$('checkCode').classList.remove('hidden');status('Telegram sent a login code.');
+  } else if(s==='authorizationStateWaitPassword'){
+   $('password').classList.remove('hidden');$('checkPassword').classList.remove('hidden');status('Enter your Telegram 2FA password.');
+  } else if(s==='authorizationStateReady'){
+   $('login').classList.add('hidden');$('app').classList.remove('hidden');status('');loadChannels();
+  }
+ }catch(e){status('Telegram error: '+(e.message||e))}
+}
+$('sendPhone').onclick=async()=>{try{await send({'@type':'setAuthenticationPhoneNumber','phone_number':$('phone').value.trim(),'settings':{'@type':'phoneNumberAuthenticationSettings','allow_flash_call':false,'allow_missed_call':false,'is_current_phone_number':true,'allow_sms_retriever_api':false}})}catch(e){status('Phone error: '+(e.message||e))}};
+$('checkCode').onclick=async()=>{try{await send({'@type':'checkAuthenticationCode','code':$('code').value.trim()})}catch(e){status('Code error: '+(e.message||e))}};
+$('checkPassword').onclick=async()=>{try{await send({'@type':'checkAuthenticationPassword','password':$('password').value})}catch(e){status('Password error: '+(e.message||e))}};
+async function loadChannels(){
+ try{
+  const r=await send({'@type':'getChats','chat_list':{'@type':'chatListMain'},'limit':200,'offset_order':'9223372036854775807','offset_chat_id':0});
+  chats=[];for(const id of r.chat_ids||[]){try{const c=await send({'@type':'getChat','chat_id':id});if(c.type&&c.type['@type']==='chatTypeSupergroup'&&c.type.is_channel)chats.push(c)}catch(e){}}
+  $('channelList').innerHTML=chats.length?chats.map((c,i)=>`<div class="channel"><div><b>${esc(c.title)}</b><br><span class="small">${c.has_protected_content?'Protected by Telegram':''}</span></div><button onclick="importChannel(${i})">Import</button></div>`).join(''):'<p class="muted">No channels found in the main chat list.</p>';
+ }catch(e){$('channelList').innerHTML='<p>'+esc(e.message||e)+'</p>'}
+}
+async function importChannel(i){
+ const c=chats[i];if(c.has_protected_content){alert('Telegram marks this channel as protected. I will not bypass that protection.');return}
+ let imported=0,skipped=0;let from=0;
+ try{
+  for(let page=0;page<5;page++){
+   const r=await send({'@type':'getChatHistory','chat_id':c.id,'from_message_id':from,'offset':0,'limit':100,'only_local':false});
+   const arr=r.messages||[];if(!arr.length)break;
+   for(const m of arr){
+    if(m.can_be_saved===false){skipped++;continue}
+    const text=m.content&&m.content['@type']==='messageText'?m.content.text.text:'';const p=parseMCQ(text);if(!p){skipped++;continue}
+    const key=c.id+':'+m.id;if(questions.some(x=>x.key===key))continue;
+    questions.push({key,source:c.title,date:m.date,...p});imported++;
+   }
+   from=arr[arr.length-1].id;if(arr.length<100)break;
+  }
+  save();renderBank();alert(`Imported ${imported} MCQs. Skipped ${skipped} posts.`)
+ }catch(e){alert('Import error: '+(e.message||e))}
+}
+function renderBank(){ $('bankArea').innerHTML=questions.length?questions.slice().reverse().map(x=>`<div class="card"><span class="pill">${esc(x.source)}</span><p class="q">${esc(x.question)}</p><ol type="A">${x.options.map(o=>`<li>${esc(o)}</li>`).join('')}</ol></div>`).join(''):'<p class="muted">No imported questions yet.</p>' }
+function startQuiz(){
+ if(!questions.length){$('quizArea').innerHTML='<p>Import some questions first.</p>';return}
+ const qs=[...questions].sort(()=>Math.random()-.5).slice(0,10);let i=0,score=0;
+ const next=()=>{if(i>=qs.length){$('quizArea').innerHTML=`<div class="card"><h2>Done</h2><p>Score: ${score}/${qs.length}</p></div>`;return}const x=qs[i];$('quizArea').innerHTML=`<p class="muted">Question ${i+1} of ${qs.length}</p><p class="q">${esc(x.question)}</p>${x.options.map((o,k)=>`<div class="opt" onclick="answer(${k})">${String.fromCharCode(65+k)}. ${esc(o)}</div>`).join('')}`;window.answer=k=>{const ok=x.answer&&(x.answer===String.fromCharCode(65+k)||x.answer===String(k+1));document.querySelectorAll('.opt')[k].classList.add(ok?'good':'bad');if(ok)score++;setTimeout(()=>{i++;next()},550)}};next();
+}
+</script>
+</body>
+</html>
